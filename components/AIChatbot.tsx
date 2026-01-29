@@ -1,12 +1,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, Loader2, Sparkles, Bot, User, Volume2 } from 'lucide-react';
-import { chatWithGemini, textToSpeech } from '../services/gemini';
+import { MessageSquare, Send, X, Loader2, Sparkles, Bot, User, Volume2, Bolt } from 'lucide-react';
+import { chatWithGemini, fastChatWithGemini, textToSpeech } from '../services/gemini';
 
 const AIChatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isFastMode, setIsFastMode] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([
-    { role: 'bot', text: 'Welcome to the NetGenius NOC Assistant. How can I help you optimize your infrastructure today?' }
+    { role: 'bot', text: 'Welcome to the NetGenius NOC Assistant. System stable. How can I help you optimize your infrastructure today?' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,10 +25,12 @@ const AIChatbot: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await chatWithGemini(userMsg);
-      setMessages(prev => [...prev, { role: 'bot', text: response || "I encountered an error." }]);
+      const response = isFastMode 
+        ? await fastChatWithGemini(userMsg)
+        : await chatWithGemini(userMsg);
+      setMessages(prev => [...prev, { role: 'bot', text: response || "I encountered a communication error with the core AI node." }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'bot', text: "Error connecting to AI Node." }]);
+      setMessages(prev => [...prev, { role: 'bot', text: "Error: AI Node Unreachable. Verify licensing and key selection." }]);
     } finally {
       setLoading(false);
     }
@@ -43,17 +46,28 @@ const AIChatbot: React.FC = () => {
         <div className="w-[400px] h-[600px] bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden mb-4 animate-in slide-in-from-bottom-8 duration-300">
           <div className="p-6 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/20">
-                <Bot className="w-6 h-6" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-all shadow-lg ${isFastMode ? 'bg-amber-500 text-slate-950 shadow-amber-500/20' : 'bg-emerald-500 text-slate-950 shadow-emerald-500/20'}`}>
+                {isFastMode ? <Bolt className="w-6 h-6 animate-pulse" /> : <Bot className="w-6 h-6" />}
               </div>
               <div>
                 <h3 className="font-bold text-white text-sm">NOC Assistant</h3>
-                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">AI Engine Active</span>
+                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isFastMode ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {isFastMode ? 'Turbo (Lite-Fast) Active' : 'Strategic Engine Active'}
+                </span>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="p-2 text-slate-500 hover:text-white transition-all">
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsFastMode(!isFastMode)}
+                title={isFastMode ? "Switch to Strategic Mode" : "Switch to Turbo Mode (Fast)"}
+                className={`p-2 rounded-lg transition-all border ${isFastMode ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+              >
+                <Bolt className={`w-4 h-4 ${isFastMode ? 'fill-current' : ''}`} />
+              </button>
+              <button onClick={() => setIsOpen(false)} className="p-2 text-slate-500 hover:text-white transition-all">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-900/50">
@@ -62,7 +76,7 @@ const AIChatbot: React.FC = () => {
                 <div className={`p-2.5 rounded-xl shrink-0 ${m.role === 'bot' ? 'bg-slate-800 text-emerald-400' : 'bg-emerald-500 text-slate-950'}`}>
                   {m.role === 'bot' ? <Sparkles className="w-4 h-4" /> : <User className="w-4 h-4" />}
                 </div>
-                <div className={`group relative p-4 rounded-2xl text-sm leading-relaxed max-w-[80%] ${m.role === 'bot' ? 'bg-slate-800/50 text-slate-200 rounded-tl-none' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-tr-none font-medium'}`}>
+                <div className={`group relative p-4 rounded-2xl text-sm leading-relaxed max-w-[80%] ${m.role === 'bot' ? 'bg-slate-800/50 text-slate-200 rounded-tl-none border border-slate-800' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-tr-none font-medium'}`}>
                   {m.text}
                   {m.role === 'bot' && (
                     <button 
@@ -77,11 +91,11 @@ const AIChatbot: React.FC = () => {
             ))}
             {loading && (
               <div className="flex gap-4">
-                <div className="p-2.5 rounded-xl bg-slate-800 text-emerald-400">
+                <div className={`p-2.5 rounded-xl bg-slate-800 ${isFastMode ? 'text-amber-400' : 'text-emerald-400'}`}>
                   <Loader2 className="w-4 h-4 animate-spin" />
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-800/50 text-slate-500 text-xs italic animate-pulse">
-                  NOC Engine is thinking...
+                  {isFastMode ? 'Instant Flash-Lite analysis...' : 'Strategic NOC Engine thinking...'}
                 </div>
               </div>
             )}
@@ -93,13 +107,13 @@ const AIChatbot: React.FC = () => {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && onSend()}
-                placeholder="Ask technical questions..."
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition-all"
+                placeholder={isFastMode ? "Type rapid technical query..." : "Ask complex design questions..."}
+                className={`flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 transition-all ${isFastMode ? 'focus:ring-amber-500/40' : 'focus:ring-emerald-500/40'}`}
               />
               <button 
                 onClick={onSend}
                 disabled={loading || !input.trim()}
-                className="p-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-800 text-white rounded-xl transition-all shadow-lg shadow-emerald-500/10"
+                className={`p-3 disabled:bg-slate-800 text-white rounded-xl transition-all shadow-lg ${isFastMode ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/10' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/10'}`}
               >
                 <Send className="w-5 h-5" />
               </button>
@@ -110,9 +124,14 @@ const AIChatbot: React.FC = () => {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-2xl hover:scale-110 active:scale-95 ${isOpen ? 'bg-slate-800 text-white border border-slate-700 rotate-90' : 'bg-emerald-500 text-slate-950 shadow-emerald-500/30'}`}
+        className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-2xl hover:scale-110 active:scale-95 border-2 ${isOpen ? 'bg-slate-800 text-white border-slate-700' : 'bg-emerald-500 text-slate-950 border-emerald-400/30 shadow-emerald-500/30'}`}
       >
-        {isOpen ? <X className="w-8 h-8" /> : <MessageSquare className="w-8 h-8" />}
+        {isOpen ? <X className="w-8 h-8" /> : (
+          <div className="relative">
+            <MessageSquare className="w-8 h-8" />
+            <Bolt className="w-4 h-4 absolute -top-1 -right-1 text-slate-950 bg-amber-400 rounded-full p-0.5 border border-slate-950 animate-bounce" />
+          </div>
+        )}
       </button>
     </div>
   );

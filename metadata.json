@@ -1,8 +1,9 @@
 {
   "name": "NetGenius AI – Enterprise Network Automation & Monitoring Platform",
-  "description": "Professional AI-driven network automation and monitoring platform designed for Enterprise, University, and Government infrastructure. Developed by Mr. Zeeshan Javed.",
+  "description": "Tier-1 AI-driven network automation and orchestration platform for Enterprise, University, and Government infrastructure. Designed & Developed by Mr. Zeeshan Javed.",
   "requestFramePermissions": [
     "camera",
-    "microphone"
+    "microphone",
+    "geolocation"
   ]
 }

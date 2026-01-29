@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
-import { generateNetworkArchitecture, textToSpeech } from '../services/gemini';
-import { Send, Terminal, Loader2, Sparkles, AlertCircle, Copy, Check, Download, FileCode, PlayCircle, ShieldCheck, Globe, Search, Volume2 } from 'lucide-react';
+import { generateNetworkArchitecture, textToSpeech, ArchitectureResult } from '../services/gemini';
+import { Send, Terminal, Loader2, Sparkles, AlertCircle, Copy, Check, Download, FileCode, PlayCircle, ShieldCheck, Globe, Search, Volume2, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import { ARCHITECT_TEMPLATES } from '../constants';
 
 const Architect: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [useSearch, setUseSearch] = useState(false);
-  const [output, setOutput] = useState<string | null>(null);
+  const [output, setOutput] = useState<ArchitectureResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -30,7 +30,7 @@ const Architect: React.FC = () => {
 
   const handleCopy = () => {
     if (!output) return;
-    navigator.clipboard.writeText(output);
+    navigator.clipboard.writeText(output.text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -38,13 +38,13 @@ const Architect: React.FC = () => {
   const playTTS = () => {
     if (!output) return;
     // Extract summary only (first 500 chars) for speech
-    const summary = output.split('\n').slice(0, 10).join('\n');
+    const summary = output.text.split('\n').slice(0, 10).join('\n');
     textToSpeech(summary).catch(console.error);
   };
 
   const downloadConfig = () => {
     if (!output) return;
-    const blob = new Blob([output], { type: 'text/markdown' });
+    const blob = new Blob([output.text], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -155,7 +155,7 @@ const Architect: React.FC = () => {
               </div>
               <div>
                 <span className="font-bold text-slate-200 block text-sm uppercase tracking-wider">Production Configuration Export</span>
-                <span className="text-[10px] text-slate-500 font-mono">THINKING_BUDGET: 32768</span>
+                <span className="text-[10px] text-slate-500 font-mono">MODEL: GEMINI_3_FLASH</span>
               </div>
             </div>
             <div className="flex gap-2">
@@ -185,9 +185,35 @@ const Architect: React.FC = () => {
           <div className="p-10 bg-slate-950">
             <div className="max-w-none prose prose-invert prose-emerald prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800">
                <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-slate-300 bg-slate-950 p-6 rounded-2xl border border-slate-800/50 shadow-inner">
-                 {output}
+                 {output.text}
                </div>
             </div>
+            
+            {output.groundingChunks && output.groundingChunks.length > 0 && (
+              <div className="mt-8 border-t border-slate-900 pt-8">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-blue-400" />
+                  Grounding Sources & References
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {output.groundingChunks.map((chunk, i) => chunk.web && (
+                    <a 
+                      key={i} 
+                      href={chunk.web.uri} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-blue-500/30 transition-all group"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1">{chunk.web.title || chunk.web.uri}</span>
+                        <span className="text-[10px] text-slate-500 line-clamp-1">{chunk.web.uri}</span>
+                      </div>
+                      <ExternalLink className="w-3 h-3 text-slate-600 group-hover:text-blue-400" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

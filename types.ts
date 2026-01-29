@@ -10,6 +10,16 @@ export enum Vendor {
   PFSENSE = 'pfSense'
 }
 
+export type Role = 'Super Admin' | 'Network Admin' | 'NOC Operator' | 'Auditor';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  lastLogin: string;
+}
+
 export interface NetworkDevice {
   id: string;
   name: string;
@@ -20,19 +30,6 @@ export interface NetworkDevice {
   status: 'Online' | 'Offline' | 'Alerting';
   healthScore: number;
   ztp?: string;
-}
-
-export interface GeneratedConfig {
-  architectureSummary: string;
-  deviceConfigs: {
-    deviceName: string;
-    vendor: string;
-    model: string;
-    config: string;
-  }[];
-  monitoringSetup: string;
-  complianceSecurity: string;
-  deploymentInstructions: string;
 }
 
 export type ViewState = 
@@ -46,4 +43,6 @@ export type ViewState =
   | 'roadmap' 
   | 'settings'
   | 'ai_lab'
+  | 'billing'
+  | 'wireless_planner'
   | 'chat';
