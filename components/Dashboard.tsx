@@ -56,10 +56,10 @@ const Dashboard: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-2">
              <Globe className="w-4 h-4 text-emerald-400" />
-             <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Enterprise Network Automation & Monitoring Platform</span>
+             <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">NetGenius AI – Enterprise Network Automation & Monitoring Platform</span>
           </div>
           <h2 className="text-3xl font-bold text-white tracking-tight">Executive Dashboard & Live NOC</h2>
-          <p className="text-slate-400 font-medium">Strategic infrastructure overview and SLA monitoring powered by NetGenius AI.</p>
+          <p className="text-slate-400 font-medium italic">Strategic infrastructure overview and SLA monitoring powered by Enterprise Core v2.0.</p>
         </div>
         <div className="flex gap-3">
           <div className="flex items-center gap-2 bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20">
@@ -211,13 +211,13 @@ const Dashboard: React.FC = () => {
             <button className="w-full mt-8 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all text-xs font-bold uppercase tracking-widest border border-slate-700">Go to Asset Manager</button>
           </div>
 
-          <div className="bg-gradient-to-br from-indigo-600 to-emerald-600 rounded-2xl p-6 text-white shadow-2xl relative overflow-hidden group">
+          <div className="bg-gradient-to-br from-indigo-600 to-emerald-600 rounded-2xl p-6 text-white shadow-2xl relative overflow-hidden group border border-white/10">
             <div className="absolute top-0 right-0 p-4 rotate-12 group-hover:rotate-0 transition-transform duration-500">
                <Zap className="w-20 h-20 text-white/10" />
             </div>
-            <h4 className="text-lg font-bold mb-2">AI Optimization Suggestion</h4>
-            <p className="text-sm text-indigo-100 mb-6 opacity-80 leading-relaxed">Redundant OSPF routes detected in Seg-C. Consolidating could save 12% CPU overhead.</p>
-            <button className="w-full py-3 bg-white text-indigo-600 rounded-xl font-bold text-sm hover:shadow-xl transition-all active:scale-95">Optimize Seg-C</button>
+            <h4 className="text-lg font-bold mb-2 tracking-tight">AI Optimization Suggestion</h4>
+            <p className="text-sm text-indigo-100 mb-6 opacity-80 leading-relaxed">Redundant OSPF routes detected in Seg-C. Consolidating could save 12% CPU overhead and improve convergence time.</p>
+            <button className="w-full py-3 bg-white text-indigo-600 rounded-xl font-bold text-sm hover:shadow-xl transition-all active:scale-95">Optimize Seg-C Now</button>
           </div>
         </div>
       </div>

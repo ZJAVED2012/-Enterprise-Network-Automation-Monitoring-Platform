@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { NAV_ITEMS } from '../constants';
 import { ViewState } from '../types';
-import { Network, UserCheck } from 'lucide-react';
+import { Network, UserCheck, ShieldCheck } from 'lucide-react';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -34,7 +33,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
             }`}
           >
             <div className={`${currentView === item.id ? 'text-white' : 'text-slate-500'}`}>
-              {/* Fix: specify the props type for cloneElement to allow className assignment */}
               {React.cloneElement(item.icon as React.ReactElement<{ className?: string }>, { className: 'w-5 h-5' })}
             </div>
             <span className="font-medium text-sm">{item.label}</span>
@@ -42,27 +40,31 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-800 space-y-4">
-        <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">SYSTEM STATUS</span>
+      <div className="p-4 border-t border-slate-800 space-y-5 bg-slate-950/20">
+        <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/30">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">NOC STATUS: SECURE</span>
           </div>
-          <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest leading-relaxed">
-            AI Nodes: Active<br/>
-            NOC Sync: Online
+          <p className="text-[8px] text-slate-500 uppercase font-bold tracking-[0.15em] leading-relaxed">
+            AI Nodes: 12 Active<br/>
+            SLA Sync: 99.9%
           </p>
         </div>
 
-        <div className="px-2">
-          <div className="flex items-center gap-2 mb-1">
-            <UserCheck className="w-3 h-3 text-slate-500" />
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Architect</span>
+        <div className="px-2 pt-2 border-t border-slate-800/50">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500/80" />
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Platform Architect</span>
           </div>
-          <p className="text-[10px] font-bold text-slate-200 leading-tight">Mr. Zeeshan Javed</p>
-          <p className="text-[8px] text-slate-500 font-medium leading-tight mt-0.5">
-            AI System Architect &<br/>Network Automation Specialist
-          </p>
+          <div className="space-y-1">
+            <p className="text-[11px] font-extrabold text-slate-100 tracking-tight">Designed & Developed by</p>
+            <p className="text-[13px] font-black text-emerald-400 leading-none">Mr. Zeeshan Javed</p>
+            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-1.5 leading-tight">
+              AI System Architect &<br/>Network Automation Specialist
+            </p>
+            <p className="text-[7px] text-slate-600 font-medium uppercase tracking-tighter mt-1">Enterprise Core v2.0</p>
+          </div>
         </div>
       </div>
     </div>
