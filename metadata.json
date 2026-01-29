@@ -1,0 +1,8 @@
+{
+  "name": "NetGenius AI - Enterprise Network Automation & Monitoring Platform",
+  "description": "Professional AI-driven network automation and monitoring platform with image analysis, diagram generation, and voice-assisted NOC intelligence.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
