@@ -70,28 +70,28 @@ const VoiceNOC: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-labelledby="voice-noc-heading">
       <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-[40px] p-10 shadow-2xl relative overflow-hidden text-center">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500"></div>
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500" aria-hidden="true"></div>
         
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 text-slate-500 hover:text-white transition-colors">
-          <X className="w-6 h-6" />
+        <button onClick={onClose} aria-label="Close voice console" className="absolute top-6 right-6 p-2 text-slate-500 hover:text-white transition-colors">
+          <X className="w-6 h-6" aria-hidden="true" />
         </button>
 
         <div className="mb-10">
           <div className="bg-emerald-500/10 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20 relative">
-            <div className={`absolute inset-0 rounded-full bg-emerald-500/20 ${isActive ? 'animate-ping' : ''}`}></div>
-            <Mic className={`w-10 h-10 ${isActive ? 'text-emerald-400' : 'text-slate-600'}`} />
+            <div className={`absolute inset-0 rounded-full bg-emerald-500/20 ${isActive ? 'animate-ping' : ''}`} aria-hidden="true"></div>
+            <Mic className={`w-10 h-10 ${isActive ? 'text-emerald-400' : 'text-slate-600'}`} aria-hidden="true" />
           </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">NOC Voice Command</h2>
+          <h2 id="voice-noc-heading" className="text-2xl font-bold text-white tracking-tight">NOC Voice Command</h2>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-2">Enterprise Live Engine Active</p>
         </div>
 
-        <div className="h-32 bg-slate-950 rounded-3xl border border-slate-800 p-6 flex items-center justify-center mb-10 overflow-hidden relative">
+        <div className="h-32 bg-slate-950 rounded-3xl border border-slate-800 p-6 flex items-center justify-center mb-10 overflow-hidden relative" aria-live="polite">
           {status === 'idle' && <p className="text-slate-600 font-medium italic">"Query core switch status..."</p>}
-          {status === 'connecting' && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />}
+          {status === 'connecting' && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" aria-hidden="true" />}
           {isActive && (
-            <div className="flex gap-1 items-center">
+            <div className="flex gap-1 items-center" aria-hidden="true">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="w-1.5 bg-emerald-500 rounded-full animate-pulse" style={{ height: `${Math.random() * 40 + 10}px`, animationDelay: `${i * 0.1}s` }}></div>
               ))}
@@ -104,23 +104,25 @@ const VoiceNOC: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           {!isActive ? (
             <button 
               onClick={startSession}
+              aria-label="Start voice session"
               className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-2xl shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
             >
-              <Mic className="w-5 h-5" />
+              <Mic className="w-5 h-5" aria-hidden="true" />
               Activate Voice Node
             </button>
           ) : (
             <button 
               onClick={stopSession}
+              aria-label="Stop voice session"
               className="w-full py-5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
             >
-              <MicOff className="w-5 h-5" />
+              <MicOff className="w-5 h-5" aria-hidden="true" />
               Disconnect Stream
             </button>
           )}
           
           <div className="flex items-center justify-center gap-2 text-slate-500">
-            <ShieldAlert className="w-4 h-4" />
+            <ShieldAlert className="w-4 h-4" aria-hidden="true" />
             <span className="text-[10px] font-bold uppercase tracking-widest">NOC Compliance: Verified Agent</span>
           </div>
         </div>

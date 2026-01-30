@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { ImageIcon, Wand2, Search, Upload, Camera, Loader2, Download, Maximize2, Layers, AlertCircle, Trash2, Video, Play, Sparkles } from 'lucide-react';
+// Fix: editVisual is now available from services
 import { generateVisual, analyzeVisual, editVisual, generateNetworkVideo } from '../services/gemini';
 
 const VisualAILab: React.FC = () => {
@@ -46,6 +47,16 @@ const VisualAILab: React.FC = () => {
     try {
       const text = await analyzeVisual(uploadedImage, prompt || "Analyze for cabling compliance.");
       setAnalysisText(text);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  };
+
+  // Fix: Handle the edit action specifically
+  const onEdit = async () => {
+    if (!uploadedImage) return;
+    setLoading(true);
+    try {
+      const url = await editVisual(uploadedImage, prompt);
+      setResultImage(url);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
@@ -98,7 +109,7 @@ const VisualAILab: React.FC = () => {
 
               <button
                 disabled={loading || (activeTab !== 'generate' && activeTab !== 'video' && !uploadedImage)}
-                onClick={activeTab === 'video' ? onGenerateVideo : activeTab === 'generate' ? onGenerate : activeTab === 'analyze' ? onAnalyze : onGenerate}
+                onClick={activeTab === 'video' ? onGenerateVideo : activeTab === 'generate' ? onGenerate : activeTab === 'analyze' ? onAnalyze : onEdit}
                 className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl ${activeTab === 'video' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'}`}
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : activeTab === 'video' ? <Sparkles className="w-5 h-5" /> : <Play className="w-5 h-5" />}
@@ -109,7 +120,7 @@ const VisualAILab: React.FC = () => {
           
           {activeTab === 'video' && (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 flex gap-4">
-              <Info className="w-6 h-6 text-blue-400 shrink-0" />
+              <InfoIcon className="w-6 h-6 text-blue-400 shrink-0" />
               <div className="space-y-1">
                 <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Veo 3.1 Pro Node</h4>
                 <p className="text-[10px] text-slate-400 leading-relaxed uppercase">Video generation takes 30-60 seconds. Our engine generates professional B-roll for your infrastructure presentations.</p>
@@ -149,7 +160,8 @@ const VisualAILab: React.FC = () => {
   );
 };
 
-const Info: React.FC<{ className?: string }> = ({ className }) => (
+// Fix: Info component renamed to InfoIcon to avoid confusion if necessary, although using a separate function is fine.
+const InfoIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
 );
 

@@ -2,19 +2,30 @@
 import { GoogleGenAI, Modality, LiveServerMessage } from "@google/genai";
 import { SYSTEM_PROMPT } from "../constants";
 
+// Key Error Notification Bus
+type KeyErrorHandler = () => void;
+const keyErrorListeners: KeyErrorHandler[] = [];
+export const onKeyError = (handler: KeyErrorHandler) => keyErrorListeners.push(handler);
+const notifyKeyError = () => keyErrorListeners.forEach(h => h());
+
 // CRITICAL: Fresh instance creation for each call ensures up-to-date user-selected API key usage.
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
- * Exponential Backoff Utility
+ * Exponential Backoff Utility for Rate Limits (429)
  */
-const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> => {
+const withRetry = async <T>(fn: () => Promise<T>, retries = 5, delay = 2000): Promise<T> => {
   try {
     return await fn();
   } catch (error: any) {
-    const isQuotaError = error?.message?.includes("429") || error?.status === "RESOURCE_EXHAUSTED";
+    const errorMsg = error?.message || "";
+    // Check for 429 (Rate Limit) or RESOURCE_EXHAUSTED
+    const isQuotaError = errorMsg.includes("429") || 
+                         errorMsg.includes("RESOURCE_EXHAUSTED") || 
+                         error?.status === "RESOURCE_EXHAUSTED";
+    
     if (isQuotaError && retries > 0) {
-      console.warn(`Quota exhausted. Retrying in ${delay}ms... (${retries} retries left)`);
+      console.warn(`Quota exhausted (429). Retrying in ${delay}ms... (${retries} retries left)`);
       await new Promise(resolve => setTimeout(resolve, delay));
       return withRetry(fn, retries - 1, delay * 2);
     }
@@ -27,21 +38,26 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 1000): Pr
  */
 const handleApiError = (error: any) => {
   console.error("Gemini API Error Detail:", error);
+  const errorMsg = error?.message || "";
   
-  if (error?.message?.includes("RESOURCE_EXHAUSTED") || error?.message?.includes("429")) {
-    throw new Error("QUOTA_EXHAUSTED: You have exceeded your API rate limits. If using a free tier, please wait a minute. For enterprise loads, ensure your billing project is active.");
+  // Handle Quota
+  if (errorMsg.includes("RESOURCE_EXHAUSTED") || errorMsg.includes("429")) {
+    throw new Error("RATE_LIMIT: Quota exceeded. Free tier has low limits. Please wait 60 seconds or ensure billing is enabled on your GCP project.");
   }
   
-  if (error?.message?.includes("PERMISSION_DENIED") || error?.message?.includes("403")) {
-    throw new Error("LICENSE_PERMISSION_DENIED: High-tier model access requires a paid API key selection. Please use the 'Verify System Key' option.");
-  }
-  
-  if (error?.message?.includes("Requested entity was not found")) {
-    throw new Error("ENTITY_NOT_FOUND: Model or Key configuration invalid.");
+  // Handle Permission/Auth/Model Availability
+  // Per guidelines: "Requested entity was not found." indicates a need to reset key selection
+  if (errorMsg.includes("PERMISSION_DENIED") || 
+      errorMsg.includes("403") || 
+      errorMsg.includes("Requested entity was not found") ||
+      errorMsg.includes("404") ||
+      errorMsg.includes("API key not valid")) {
+    notifyKeyError(); // Reset hasKey in App.tsx to force re-selection
+    throw new Error("AUTH_ERROR: Permission denied or Model not found. Please ensure you select an API key from a PAID Google Cloud Project with Billing enabled.");
   }
 
-  if (error?.message?.includes("IMAGE_GENERATION_FAILED")) {
-    throw new Error("IMAGE_GENERATION_FAILED: The AI refused to generate the visual or encountered a safety filter block. Try a different prompt.");
+  if (errorMsg.includes("IMAGE_GENERATION_FAILED") || errorMsg.includes("SAFETY")) {
+    throw new Error("IMAGE_FAILED: Content blocked by safety filters. Try a more technical/professional network prompt.");
   }
 
   throw error;
@@ -59,7 +75,7 @@ export const generateNetworkArchitecture = async (prompt: string, useSearch: boo
       const config: any = {
         systemInstruction: SYSTEM_PROMPT,
         temperature: 0.1,
-        maxOutputTokens: 20000,
+        maxOutputTokens: 15000,
         thinkingConfig: { thinkingBudget: 4000 }
       };
       if (useSearch) config.tools = [{ googleSearch: {} }];
@@ -86,11 +102,9 @@ export const generateAnsiblePlaybook = async (intent: string): Promise<string> =
       const ai = getAI();
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Generate a production-ready Ansible playbook for the following network intent: "${intent}". 
-        Include multi-vendor support (Cisco/Juniper/Fortinet), variables for secrets, and pre-push validation tasks. 
-        Ensure output is in valid YAML format.`,
+        contents: `Generate a production-ready Ansible playbook for: "${intent}". Return ONLY YAML.`,
         config: {
-          systemInstruction: "You are an Ansible Network Automation Expert. Only provide the YAML code, no explanation.",
+          systemInstruction: "You are an Ansible Expert. Only provide the YAML code, no explanation.",
         },
       });
       return response.text || "--- \n# Error generating playbook";
@@ -124,7 +138,7 @@ export const fastChatWithGemini = async (message: string) => {
         model: 'gemini-flash-lite-latest',
         contents: message,
         config: {
-          systemInstruction: SYSTEM_PROMPT + "\nOperational Context: Rapid Tactical Helper.",
+          systemInstruction: SYSTEM_PROMPT + "\nRapid Response Mode.",
           temperature: 0.1
         }
       });
@@ -135,15 +149,12 @@ export const fastChatWithGemini = async (message: string) => {
   });
 };
 
-/**
- * GENERATE VIDEOS: Veo 3.1 Integration
- */
 export const generateNetworkVideo = async (prompt: string) => {
   try {
     const ai = getAI();
     let operation = await ai.models.generateVideos({
       model: 'veo-3.1-fast-generate-preview',
-      prompt: `Professional cinematic 3D network animation: ${prompt}. High-tech server room aesthetic, blue and emerald lighting, flowing data packets.`,
+      prompt: `Cinematic 3D network animation: ${prompt}`,
       config: {
         numberOfVideos: 1,
         resolution: '720p',
@@ -163,52 +174,61 @@ export const generateNetworkVideo = async (prompt: string) => {
   }
 };
 
-/**
- * LIVE NOC VOICE: Real-time Audio Connection
- */
-export const connectNOCVoice = async (callbacks: any) => {
-  try {
-    const ai = getAI();
-    return ai.live.connect({
-      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-      callbacks,
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
-        },
-        systemInstruction: SYSTEM_PROMPT + "\nYou are in a voice-only NOC assistant mode. Be concise and technical.",
-      },
-    });
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
 export const generateVisual = async (prompt: string, size: "1K" | "2K" | "4K" = "1K", aspectRatio: string = "1:1") => {
   return withRetry(async () => {
     try {
       const ai = getAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: prompt }] },
-        config: { 
-          imageConfig: { 
-            aspectRatio: aspectRatio as any
-          } 
+      const model = (size === "2K" || size === "4K") ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
+      const config: any = {
+        imageConfig: {
+          aspectRatio: aspectRatio as any
         }
+      };
+      
+      if (model === 'gemini-3-pro-image-preview') {
+        config.imageConfig.imageSize = size;
+      }
+
+      const response = await ai.models.generateContent({
+        model,
+        contents: { parts: [{ text: prompt }] },
+        config
       });
 
-      if (!response.candidates?.[0]) throw new Error("IMAGE_GENERATION_FAILED: No candidates returned.");
+      if (!response.candidates?.[0]) throw new Error("IMAGE_GENERATION_FAILED");
 
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        if (part.text) {
-          console.warn("Model returned text instead of image:", part.text);
-          throw new Error(`IMAGE_GENERATION_FAILED: ${part.text}`);
-        }
       }
       throw new Error("IMAGE_GENERATION_FAILED");
+    } catch (error) {
+      return handleApiError(error);
+    }
+  });
+};
+
+export const editVisual = async (base64Image: string, prompt: string) => {
+  return withRetry(async () => {
+    try {
+      const ai = getAI();
+      const [mimePart, data] = base64Image.split(';base64,');
+      const mimeType = mimePart.split(':')[1];
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: {
+          parts: [
+            { inlineData: { data, mimeType } },
+            { text: prompt },
+          ],
+        },
+      });
+
+      if (!response.candidates?.[0]) throw new Error("IMAGE_EDIT_FAILED");
+
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+      }
+      throw new Error("IMAGE_EDIT_FAILED");
     } catch (error) {
       return handleApiError(error);
     }
@@ -226,30 +246,6 @@ export const analyzeVisual = async (base64Image: string, prompt: string) => {
         contents: { parts: [{ inlineData: { data, mimeType } }, { text: prompt }] }
       });
       return response.text;
-    } catch (error) {
-      return handleApiError(error);
-    }
-  });
-};
-
-export const editVisual = async (base64Image: string, prompt: string) => {
-  return withRetry(async () => {
-    try {
-      const ai = getAI();
-      const [mimePart, data] = base64Image.split(';base64,');
-      const mimeType = mimePart.split(':')[1];
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ inlineData: { data, mimeType } }, { text: prompt }] }
-      });
-      
-      if (!response.candidates?.[0]) throw new Error("IMAGE_EDIT_FAILED: No candidates.");
-
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        if (part.text) throw new Error(`IMAGE_EDIT_FAILED: ${part.text}`);
-      }
-      throw new Error("IMAGE_EDIT_FAILED");
     } catch (error) {
       return handleApiError(error);
     }
@@ -289,6 +285,7 @@ export const textToSpeech = async (text: string) => {
       });
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (!base64Audio) return;
+      
       const bytes = decode(base64Audio);
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       const buffer = await decodeAudioData(bytes, ctx, 24000, 1);
@@ -300,6 +297,25 @@ export const textToSpeech = async (text: string) => {
       return handleApiError(error);
     }
   });
+};
+
+export const connectNOCVoice = async (callbacks: any) => {
+  try {
+    const ai = getAI();
+    return ai.live.connect({
+      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      callbacks,
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+        },
+        systemInstruction: SYSTEM_PROMPT + "\nNOC Voice Assistant.",
+      },
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 // --- AUDIO UTILITIES ---
