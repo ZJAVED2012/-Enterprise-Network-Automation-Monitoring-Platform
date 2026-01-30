@@ -16,30 +16,29 @@ import Billing from './components/Billing';
 import WirelessPlanner from './components/WirelessPlanner';
 import Auth from './components/Auth';
 import { ViewState, User } from './types';
-import { Bell, Info, ShieldCheck, Globe, Zap, User as UserIcon, LogOut, Mic } from 'lucide-react';
+import { Bell, Info, ShieldCheck, Globe, Zap, User as UserIcon, LogOut, Mic, AlertCircle } from 'lucide-react';
 import { TRANSLATIONS } from './constants';
 import { onKeyError } from '../services/gemini';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
-  const [hasKey, setHasKey] = useState<boolean>(true);
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [isUrdu, setIsUrdu] = useState(false);
+  const [apiStatus, setApiStatus] = useState<'verified' | 'simulation'>('simulation');
 
   useEffect(() => {
     const checkKeySelection = async () => {
       if (typeof (window as any).aistudio !== 'undefined' && (window as any).aistudio.hasSelectedApiKey) {
         const isSelected = await (window as any).aistudio.hasSelectedApiKey();
-        setHasKey(isSelected);
+        if (isSelected) setApiStatus('verified');
       }
     };
     checkKeySelection();
     
-    // Subscribe to key errors (403 Permission Denied / 404 Entity not found)
+    // If an API error occurs, we gracefully stay in simulation mode instead of locking the app
     const unsubscribe = onKeyError(() => {
-      console.warn("API Auth/Verify Error detected. Prompting for new key selection.");
-      setHasKey(false);
+      setApiStatus('simulation');
     });
 
     const savedUser = localStorage.getItem('netgenius_session');
@@ -59,18 +58,6 @@ const App: React.FC = () => {
     setCurrentView('dashboard');
   };
 
-  /**
-   * CRITICAL: Mitigate race condition by assuming selection success.
-   * Logic: If a request fails later, onKeyError listener will reset this state.
-   */
-  const handleKeyActivation = async () => {
-    if (typeof (window as any).aistudio !== 'undefined' && (window as any).aistudio.openSelectKey) {
-      await (window as any).aistudio.openSelectKey();
-      // Per instructions: "assume the key selection was successful after triggering openSelectKey() and proceed to the app."
-      setHasKey(true);
-    }
-  };
-
   const renderView = () => {
     switch (currentView) {
       case 'dashboard': return <Dashboard />;
@@ -84,42 +71,12 @@ const App: React.FC = () => {
       case 'roadmap': return <Roadmap />;
       case 'billing': return <Billing />;
       case 'wireless_planner': return <WirelessPlanner />;
-      case 'settings': return <div className="text-slate-400 p-10 bg-slate-900 border border-slate-800 rounded-3xl">Advanced Platform Settings Coming Soon. Current Build: v2.0.1 Enterprise.</div>;
+      case 'settings': return <div className="text-slate-400 p-10 bg-slate-900 border border-slate-800 rounded-3xl font-mono text-sm">/sys/settings: Platform configuration modules are currently locked for SuperAdmin roles only. Current Build: v2.0.1 Enterprise.</div>;
       default: return <Dashboard />;
     }
   };
 
   if (!user) return <Auth onLogin={handleLogin} />;
-
-  if (!hasKey) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 p-12 rounded-3xl max-w-md w-full text-center space-y-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-          <div className="bg-emerald-500/10 w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-emerald-500/20">
-            <ShieldCheck className="w-12 h-12 text-emerald-400" />
-          </div>
-          <div className="space-y-4">
-            <h2 className="text-3xl font-bold text-white tracking-tight">License Key Verification</h2>
-            <p className="text-slate-400 text-sm leading-relaxed px-4">
-              To activate high-tier models (Gemini 3 Pro & Veo), please select an authorized API key from a <strong>PAID Google Cloud Project</strong> with billing enabled.
-            </p>
-          </div>
-          <div className="space-y-4">
-            <button 
-              onClick={handleKeyActivation} 
-              className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-2xl shadow-xl shadow-emerald-500/20 uppercase tracking-widest text-xs transition-all active:scale-95"
-            >
-              Verify System Key
-            </button>
-            <p className="text-[9px] text-slate-600 uppercase font-bold flex items-center justify-center gap-2">
-              <Globe className="w-3 h-3" /> NIST 800-53 Compliant Handshake
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen bg-slate-950 flex selection:bg-emerald-500/30 ${isUrdu ? 'rtl font-urdu text-right' : ''}`}>
@@ -131,23 +88,34 @@ const App: React.FC = () => {
       />
       
       <main className={`flex-1 p-10 relative ${isUrdu ? 'mr-64' : 'ml-64'}`}>
-        <div className="mb-10 flex items-center justify-between bg-emerald-500 text-slate-950 px-6 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/20">
+        <div className={`mb-10 flex items-center justify-between px-6 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-[0.2em] shadow-lg transition-all ${apiStatus === 'verified' ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
           <div className="flex items-center gap-3">
-            <Zap className="w-4 h-4 animate-bounce" />
-            <span>{t.system_status}: NetGenius v2.0 Global Orchestrator Ready. Live Voice Node Active.</span>
+            <Zap className={`w-4 h-4 ${apiStatus === 'verified' ? 'animate-bounce' : ''}`} />
+            <span>
+              {t.system_status}: NetGenius v2.0 Global Orchestrator Ready. 
+              {apiStatus === 'simulation' ? " [SIMULATION MODE - NO KEY DETECTED]" : " [LIVE NODE ACTIVE]"}
+            </span>
           </div>
-          {isUrdu && <span className="font-urdu text-[12px]">آپریشنل نوڈ آن لائن ہے</span>}
+          <div className="flex items-center gap-4">
+            {apiStatus === 'simulation' && (
+              <div className="flex items-center gap-1.5 text-amber-500 font-black">
+                <AlertCircle className="w-3.5 h-3.5" />
+                DEMO ONLY
+              </div>
+            )}
+            {isUrdu && <span className="font-urdu text-[12px]">آپریشنل نوڈ آن لائن ہے</span>}
+          </div>
         </div>
 
         <div className={`flex justify-between items-center mb-10 pb-6 border-b border-slate-900/50 ${isUrdu ? 'flex-row-reverse' : ''}`}>
           <div className="flex items-center gap-4">
              <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-slate-500 text-xs font-bold flex items-center gap-2 uppercase tracking-widest">
                 <Info className="w-4 h-4 text-emerald-400" />
-                {t.node}: <span className="text-emerald-400 font-mono">SECURE_NOC_NODE_01</span>
+                {t.node}: <span className="text-emerald-400 font-mono uppercase">Node_Pak_01</span>
              </div>
              <button onClick={() => setIsVoiceOpen(true)} className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-xl text-blue-400 text-[10px] font-bold uppercase hover:bg-blue-500/20 transition-all">
                 <Mic className="w-4 h-4" />
-                {isUrdu ? 'وائس اسسٹنٹ' : 'Live Voice Assistant'}
+                {isUrdu ? 'وائس اسسٹنٹ' : 'Voice Assistant'}
              </button>
           </div>
           
